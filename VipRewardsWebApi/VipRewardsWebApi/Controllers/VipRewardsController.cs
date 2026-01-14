@@ -10,7 +10,7 @@ using WebApiTemplate.Controllers;
 
 namespace VipRewardsWebApi.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api")]
     [ApiController]
     public class VipRewardsController : AppControllerBase
     {
@@ -19,21 +19,29 @@ namespace VipRewardsWebApi.Controllers
         private readonly RsaCryptoService _rsa;
         private readonly AesGcmCryptoService _aes;
         private readonly OneTimeKeyOptions _opt;
+        private readonly IHmacTokenService _hmacService;
 
         public VipRewardsController(
             ILogger<DemoController> logger,
             IOneTimeKeyStore keyStore,
             RsaCryptoService rsa,
             AesGcmCryptoService aes,
-            IOptions<OneTimeKeyOptions> opt)
+            IOptions<OneTimeKeyOptions> opt,
+            IHmacTokenService hmacService)
         {
             _logger = logger;
             _keyStore = keyStore;
             _rsa = rsa;
             _aes = aes;
             _opt = opt.Value;
+            _hmacService = hmacService;
         }
 
+        /// <summary>
+        /// API-VIP003 產生保戶資訊加密一次性公鑰
+        /// </summary>
+        /// <param name="req"></param>
+        /// <returns></returns>
         [HttpPost("GetOneTimePublicKey")]
         public ActionResult<ApiResponse<GetOneTimePublicKeyResponse>> GetOneTimePublicKey([FromBody] GetOneTimePublicKeyRequest req)
         {
@@ -50,8 +58,45 @@ namespace VipRewardsWebApi.Controllers
             });
         }
 
+        /// <summary>
+        /// API-VIP001 保戶VIP資訊查詢
+        /// </summary>
+        /// <param name="req"></param>
+        /// <returns></returns>
         [HttpPost("GetVipInfo")]
-        public ActionResult<ApiResponse<GetVipInfoRequest>> GetVipInfo([FromBody] GetVipInfoRequest req)
+        public ActionResult<ApiResponse<GetVipInfoResponse>> GetVipInfo([FromBody] GetVipInfoRequest req)
+        {
+            if (req is null || string.IsNullOrWhiteSpace(req.Tk))
+                return BadRequest("Token is required.");
+
+            string plainText =_hmacService.RedeemToken(req.Tk);
+
+            VipInfo vipInfo = new VipInfo
+            {
+                VipInfoId = Guid.NewGuid().ToString("N"),
+                Name = "何X仁",
+                VipLevel = "1",
+                ValidFrom = "2026/01/18",
+                ValidTill = "2027/01/17",
+                RewardBalance = 1688,
+            };
+            GetVipInfoResponse getVipInfoResponse = new GetVipInfoResponse();
+            getVipInfoResponse.VipInfos.Add(vipInfo);
+
+            // 使用靜態 Success 方法建立回應物件
+            var resp = ApiResponse<GetVipInfoResponse>.Success(getVipInfoResponse);
+
+            return Ok(resp);
+
+        }
+
+        /// <summary>
+        /// API-VIP002 
+        /// </summary>
+        /// <param name="req"></param>
+        /// <returns></returns>
+        [HttpPost("ValidateVipInfo")]
+        public ActionResult<ApiResponse<ValidateVipInfoRequest>> ValidateVipInfo([FromBody] ValidateVipInfoRequest req)
         {
             if (!Guid.TryParse(req.RequestId, out _))
                 return BadRequest(Error.Validation("requestId must be a UUID string."));
@@ -80,14 +125,14 @@ namespace VipRewardsWebApi.Controllers
 
                 // 基本防呆：AES key 長度應為 16/24/32
                 if (aesKey.Length is not (16 or 24 or 32))
-                    return BadRequest(Error.Validation($"Decrypted AES key length invalid: {aesKey.Length} bytes." ));
+                    return BadRequest(Error.Validation($"Decrypted AES key length invalid: {aesKey.Length} bytes."));
 
                 // 2) AES-GCM 解密資料
                 var plain = _aes.DecryptToUtf8(aesKey, iv, cipherText, tag);
 
                 // 3) 將 plain 當作 JSON 解析，並取出 id/name
                 string id;
-                string name;
+                string birthDate;
                 try
                 {
                     using var doc = JsonDocument.Parse(plain);
@@ -96,28 +141,30 @@ namespace VipRewardsWebApi.Controllers
                     if (!root.TryGetProperty("id", out var idProp) || idProp.ValueKind != JsonValueKind.String)
                         return BadRequest(Error.Validation("Decrypted payload must contain string property 'id'."));
 
-                    if (!root.TryGetProperty("name", out var nameProp) || nameProp.ValueKind != JsonValueKind.String)
+                    if (!root.TryGetProperty("birthDate", out var birthDateProp) || birthDateProp.ValueKind != JsonValueKind.String)
                         return BadRequest(Error.Validation("Decrypted payload must contain string property 'name'."));
 
                     id = idProp.GetString()!;
-                    name = nameProp.GetString()!;
+                    birthDate = birthDateProp.GetString()!;
                 }
                 catch (JsonException)
                 {
                     return BadRequest(Error.Validation("Decrypted payload is not valid JSON."));
                 }
 
-                // 4) 建立回應物件，將解析出的 id/name 指派到 GetVipInfoResponse
-                GetVipInfoResponse vipInfo = new GetVipInfoResponse
+                // 4) 將id作HMAC256 Hash
+                var tk = _hmacService.IssueToken(id);
+
+                // 5) 建立回應物件
+                VipInfoQueryToken vipInfo = new VipInfoQueryToken
                 {
-                    Id = id,
-                    Name = name,
-                    VipLevel = "1",
-                    RewardBalance = 1688,
+                    Tk = tk,
                 };
+                ValidateVipInfoResponse validateVipInfoResponse = new ValidateVipInfoResponse();
+                validateVipInfoResponse.Tokens.Add(vipInfo);
 
                 // 使用靜態 Success 方法建立回應物件
-                var resp = ApiResponse<GetVipInfoResponse>.Success(vipInfo);
+                var resp = ApiResponse<ValidateVipInfoResponse>.Success(validateVipInfoResponse);
 
                 return Ok(resp);
             }

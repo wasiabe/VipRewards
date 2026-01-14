@@ -79,7 +79,7 @@ Console.WriteLine("== Step 3: SendEncryptedData ==");
 
 var decResp = await PostJsonAsync<ApiResponse<GetVipInfoDataResponse>>(
     http,
-    "/api/VipRewards/GetVipInfo",
+    "/api/ValidateVipInfo",
     sendReq);
 
 Console.WriteLine("decryptedData:");

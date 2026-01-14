@@ -112,6 +112,9 @@ builder.Services.AddSingleton<IOneTimeKeyStore, MemoryOneTimeKeyStore>();
 builder.Services.AddSingleton<RsaCryptoService>();
 builder.Services.AddSingleton<AesGcmCryptoService>();
 
+// HMAC
+builder.Services.AddScoped<IHmacTokenService, HmacTokenService>();
+
 var app = builder.Build();
 
 // ±Ò¥Î Forwarded Headers
