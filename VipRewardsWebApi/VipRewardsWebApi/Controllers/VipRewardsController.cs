@@ -81,7 +81,8 @@ namespace VipRewardsWebApi.Controllers
                 RewardBalance = 1688,
             };
             GetVipInfoResponse getVipInfoResponse = new GetVipInfoResponse();
-            getVipInfoResponse.VipInfos.Add(vipInfo);
+            getVipInfoResponse.VipInfos = new List<VipInfo>();
+            getVipInfoResponse.VipInfos?.Add(vipInfo);
 
             // 使用靜態 Success 方法建立回應物件
             var resp = ApiResponse<GetVipInfoResponse>.Success(getVipInfoResponse);
@@ -95,8 +96,8 @@ namespace VipRewardsWebApi.Controllers
         /// </summary>
         /// <param name="req"></param>
         /// <returns></returns>
-        [HttpPost("ValidateVipInfo")]
-        public ActionResult<ApiResponse<ValidateVipInfoRequest>> ValidateVipInfo([FromBody] ValidateVipInfoRequest req)
+        [HttpPost("ValidatePolicyOwner")]
+        public ActionResult<ApiResponse<ValidatePolicyOwnerResponse>> ValidatePolicyOwner([FromBody] ValidatePolicyOwnerRequest req)
         {
             if (!Guid.TryParse(req.RequestId, out _))
                 return BadRequest(Error.Validation("requestId must be a UUID string."));
@@ -156,15 +157,16 @@ namespace VipRewardsWebApi.Controllers
                 var tk = _hmacService.IssueToken(id);
 
                 // 5) 建立回應物件
-                VipInfoQueryToken vipInfo = new VipInfoQueryToken
+                VipInfoQueryToken vipInfoToken = new VipInfoQueryToken
                 {
                     Tk = tk,
                 };
-                ValidateVipInfoResponse validateVipInfoResponse = new ValidateVipInfoResponse();
-                validateVipInfoResponse.Tokens.Add(vipInfo);
+                ValidatePolicyOwnerResponse validateVipInfoResponse = new ValidatePolicyOwnerResponse();
+                validateVipInfoResponse.Tokens = new List<VipInfoQueryToken>();
+                validateVipInfoResponse.Tokens?.Add(vipInfoToken);
 
                 // 使用靜態 Success 方法建立回應物件
-                var resp = ApiResponse<ValidateVipInfoResponse>.Success(validateVipInfoResponse);
+                var resp = ApiResponse<ValidatePolicyOwnerResponse>.Success(validateVipInfoResponse);
 
                 return Ok(resp);
             }

@@ -25,7 +25,7 @@ public sealed class VipInfo
     [Required]
     public string ValidTill { get; set; } = default!;
 
-    [JsonPropertyName("rewardBalance")]
+    [JsonPropertyName("rewardPoints")]
     [Required]
-    public int RewardBalance { get; set; } = default!;
+    public int RewardPoints { get; set; } = default!;
 }

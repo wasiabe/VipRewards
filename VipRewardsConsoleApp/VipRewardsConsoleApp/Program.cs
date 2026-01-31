@@ -21,7 +21,7 @@ Console.WriteLine("== Step 1: GetOneTimePublicKey ==");
 
 var pubResp = await PostJsonAsync<GetOneTimePublicKeyResponse>(
     http,
-    "/api/VipRewards/GetOneTimePublicKey",
+    settings.Api.PathGetOneTimePublicKey,
     new GetOneTimePublicKeyRequest { RequestId = requestId });
 
 Console.WriteLine("requestId:");
@@ -55,7 +55,7 @@ rsaPub.ImportFromPem(pubResp.PublicKey);
 byte[] encryptedKey = rsaPub.Encrypt(aesKey, RSAEncryptionPadding.OaepSHA256);
 
 // 2-4) 轉 Base64 組成 SendEncryptedData Request
-var sendReq = new GetVipInfoRequest
+var sendReq = new ValidatePolicyOwnerRequest
 {
     RequestId = requestId,
     EncryptedKey = Convert.ToBase64String(encryptedKey),
@@ -75,21 +75,21 @@ Console.WriteLine($"tag        : {tag.Length} bytes (base64 len {sendReq.Tag.Len
 Console.WriteLine();
 
 // ========== 3) 呼叫 SendEncryptedData ==========
-Console.WriteLine("== Step 3: SendEncryptedData ==");
+Console.WriteLine("== Step 3: ValidatePolicyOwner ==");
 
-var decResp = await PostJsonAsync<ApiResponse<GetVipInfoDataResponse>>(
+var decResp = await PostJsonAsync<ApiResponse<ValidatePolicyOwnerResponse>>(
     http,
-    "/api/ValidateVipInfo",
+    settings.Api.PathValidatePolicyOwner,
     sendReq);
 
-Console.WriteLine("decryptedData:");
-Console.WriteLine(decResp.Data.Id);
+Console.WriteLine("Tokens:");
+foreach (var token in decResp?.Data?.Tokens)
+{
+    Console.WriteLine($"Token:{token.Tk}");
+}
 Console.WriteLine();
 
-// ========== 4) 驗證 ==========
-Console.WriteLine("== Step 4: Verify ==");
-Console.WriteLine(decResp.Data.Id == "A123XXX789" ? "OK ✅ (decryptedData == plainText)" : "FAILED ❌");
-Console.WriteLine("Done.");
+Console.ReadLine();
 
 // =================== 以下是程式內部 helper / DTO ===================
 
@@ -111,19 +111,39 @@ static HttpClient CreateHttpClient(string baseUrl)
 
 static async Task<T> PostJsonAsync<T>(HttpClient http, string path, object body)
 {
-    using var resp = await http.PostAsJsonAsync(path, body, new JsonSerializerOptions(JsonSerializerDefaults.Web));
-    var content = await resp.Content.ReadAsStringAsync();
-
-    if (!resp.IsSuccessStatusCode)
+    try
     {
-        throw new HttpRequestException(
-            $"HTTP {(int)resp.StatusCode} {resp.ReasonPhrase}\nPath: {path}\nBody: {content}");
+        var request = new HttpRequestMessage(HttpMethod.Post, path)
+        {
+            Content = JsonContent.Create(body)
+        };
+
+        using var resp = await http.SendAsync(request);
+        var content = await resp.Content.ReadAsStringAsync();
+
+        if (!resp.IsSuccessStatusCode)
+        {
+            throw new HttpRequestException(
+                $"HTTP:{(int)resp.StatusCode} {resp.ReasonPhrase}\n" +
+                $"URL:{request.RequestUri}\n" +
+                $"Body:{JsonSerializer.Serialize(body)}\n" +
+                $"Response:{content}"
+                );
+        }
+
+        var obj = JsonSerializer.Deserialize<T>(content, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        if (obj is null) throw new InvalidOperationException("Response JSON deserialize failed.");
+
+        return obj;
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Exception Message:{ex.Message}");
+        Console.WriteLine(ex.StackTrace);
+
+        throw;
     }
 
-    var obj = JsonSerializer.Deserialize<T>(content, new JsonSerializerOptions(JsonSerializerDefaults.Web));
-    if (obj is null) throw new InvalidOperationException("Response JSON deserialize failed.");
-
-    return obj;
 }
 
 static AppSettings LoadSettings()
@@ -144,6 +164,8 @@ sealed class AppSettings
 sealed class ApiSettings
 {
     public string BaseUrl { get; set; } = "https://localhost:5001";
+    public string PathGetOneTimePublicKey { get; set; } = string.Empty;
+    public string PathValidatePolicyOwner { get; set; } = string.Empty;
 }
 
 sealed class TestDataSettings
@@ -162,7 +184,7 @@ sealed class GetOneTimePublicKeyResponse
     public string PublicKey { get; set; } = default!;
 }
 
-sealed class GetVipInfoRequest
+sealed class ValidatePolicyOwnerRequest
 {
     public string RequestId { get; set; } = default!;
     public string EncryptedKey { get; set; } = default!;
@@ -174,25 +196,20 @@ sealed class GetVipInfoRequest
 sealed class ApiResponse<T>
 {
     public string Code { get; set; } = default!;
-    public string Message { get; set; }
-    public T Data { get; set; }
+    public string? Message { get; set; }
+    public T? Data { get; set; }
 }
 
-sealed class GetVipInfoDataResponse
+sealed class ValidatePolicyOwnerResponse
 {
-    [JsonPropertyName("id")]
+    [JsonPropertyName("tokens")]
     [Required]
-    public string Id { get; set; } = default!;
+    public List<Token> Tokens { get; set; } = default!;
+}
 
-    [JsonPropertyName("name")]
+sealed class Token
+{
+    [JsonPropertyName("tk")]
     [Required]
-    public string Name { get; set; } = default!;
-
-    [JsonPropertyName("vipLevel")]
-    [Required]
-    public string VipLevel { get; set; } = default!;
-
-    [JsonPropertyName("rewardBalance")]
-    [Required]
-    public int RewardBalance { get; set; } = default!;
+    public string Tk { get; set; } = default!;
 }
