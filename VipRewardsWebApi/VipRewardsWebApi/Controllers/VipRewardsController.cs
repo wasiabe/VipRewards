@@ -20,14 +20,15 @@ namespace VipRewardsWebApi.Controllers
         private readonly AesGcmCryptoService _aes;
         private readonly OneTimeKeyOptions _opt;
         private readonly IHmacTokenService _hmacService;
-
+        private readonly IXoInParamRepository _xoInParamRepository;
         public VipRewardsController(
             ILogger<DemoController> logger,
             IOneTimeKeyStore keyStore,
             RsaCryptoService rsa,
             AesGcmCryptoService aes,
             IOptions<OneTimeKeyOptions> opt,
-            IHmacTokenService hmacService)
+            IHmacTokenService hmacService,
+            IXoInParamRepository xoInParamRepository)
         {
             _logger = logger;
             _keyStore = keyStore;
@@ -35,6 +36,7 @@ namespace VipRewardsWebApi.Controllers
             _aes = aes;
             _opt = opt.Value;
             _hmacService = hmacService;
+            _xoInParamRepository = xoInParamRepository;
         }
 
         /// <summary>
@@ -97,7 +99,7 @@ namespace VipRewardsWebApi.Controllers
         /// <param name="req"></param>
         /// <returns></returns>
         [HttpPost("ValidatePolicyOwner")]
-        public ActionResult<ApiResponse<ValidatePolicyOwnerResponse>> ValidatePolicyOwner([FromBody] ValidatePolicyOwnerRequest req)
+        public async Task<ActionResult<ApiResponse<ValidatePolicyOwnerResponse>>> ValidatePolicyOwner([FromBody] ValidatePolicyOwnerRequest req)
         {
             if (!Guid.TryParse(req.RequestId, out _))
                 return BadRequest(Error.Validation("requestId must be a UUID string."));

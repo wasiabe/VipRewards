@@ -1,4 +1,4 @@
-global using Serilog;
+ï»¿global using Serilog;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -11,12 +11,12 @@ using VipRewardsWebApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Serilog °t¸m: Read configuration from appsettings.json
+// Serilog é…ç½®: Read configuration from appsettings.json
 Log.Logger = new LoggerConfiguration()
     .ReadFrom.Configuration(builder.Configuration).CreateLogger();
 
-// ¦b Host.UseSerilog ¤§«eµù¥U IHttpContextAccessor¡AÅı Serilog ªº±Ò°Ê©e¬£¯à¦w¥ş¸ÑªR¥¦
-// ¦b»İ­n°O¾ĞÅé§Ö¨úªºªA°Èµù¥U¤§«eµù¥U MemoryCache
+// åœ¨ Host.UseSerilog ä¹‹å‰è¨»å†Š IHttpContextAccessorï¼Œè®“ Serilog çš„å•Ÿå‹•å§”æ´¾èƒ½å®‰å…¨è§£æå®ƒ
+// åœ¨éœ€è¦è¨˜æ†¶é«”å¿«å–çš„æœå‹™è¨»å†Šä¹‹å‰è¨»å†Š MemoryCache
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddMemoryCache();
 
@@ -32,7 +32,7 @@ builder.Host.UseSerilog((ctx, services, cfg) =>
     cfg.Enrich.With(new TraceIdEnricher(httpAccessor));
 });
 
-// ³]©w Options 
+// è¨­å®š Options 
 builder.Services.AddOptions<IpAllowlistOptions>()
     .Bind(builder.Configuration.GetSection(IpAllowlistOptions.SectionName))
     .ValidateDataAnnotations()
@@ -51,7 +51,7 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
     // NOTE: In production, restrict KnownNetworks / KnownProxies!
 });
 
-// Rate Limiting ­­¬y°t¸m
+// Rate Limiting é™æµé…ç½®
 builder.Services.AddRateLimiter(options =>
 {
     options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
@@ -75,39 +75,40 @@ builder.Services.AddRateLimiter(options =>
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 });
 
-// µù¥U¦Û©w¸q¿ù»~³B²z¾¹
+// è¨»å†Šè‡ªå®šç¾©éŒ¯èª¤è™•ç†å™¨
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
-// ¨Ï¥Î·Ç¤Æ¿ù»~¦^À³®æ¦¡ RFC 9457
+// ä½¿ç”¨æº–åŒ–éŒ¯èª¤å›æ‡‰æ ¼å¼ RFC 9457
 builder.Services.AddProblemDetails();
 
 builder.Services.AddControllers();
 
-//±´¯ÁAPI
+//æ¢ç´¢API
 builder.Services.AddEndpointsApiExplorer();
-//²£¥ÍSwagger¤å¥ó:/swagger/v1/swagger.json
+//ç”¢ç”ŸSwaggeræ–‡ä»¶:/swagger/v1/swagger.json
 builder.Services.AddSwaggerGen();
 
-// µù¥U IP ¥d±± Middleware (¦Û©w¸q¹ê§@) <- ²¾¨ì Build ¤§«e
+// è¨»å†Š IP å¡æ§ Middleware (è‡ªå®šç¾©å¯¦ä½œ) <- ç§»åˆ° Build ä¹‹å‰
 builder.Services.AddTransient<IpAllowlistMiddleware>();
 
-// ª`¤J¸ê®Æ®wªA°È
+// æ³¨å…¥è³‡æ–™åº«æœå‹™
 builder.Services.AddDbContext<AppDbContext>(opt =>
     opt.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// ª`¤JWeb API LogªA°È
+// æ³¨å…¥Web API Logæœå‹™
 builder.Services.Configure<WebApiRequestLogOptions>(
     builder.Configuration.GetSection("WebApiRequestLog"));
 builder.Services.AddScoped<IWebApiRequestLogRepository, WebApiRequestLogRepository>();
 builder.Services.AddScoped<WebApiRequestLogMiddleware>();
+builder.Services.AddScoped<IXoInParamRepository, XoInParamRepository>();
 
-// §å¦¸¼g¤JLOG
+// æ‰¹æ¬¡å¯«å…¥LOG
 builder.Services.AddSingleton(new WebApiRequestLogQueue(capacity: 5000));
 builder.Services.AddHostedService<WebApiRequestLogWriterService>();
 
-// RSA & AES-GTM ¥[¸Ñ±K
+// RSA & AES-GTM åŠ è§£å¯†
 builder.Services.Configure<OneTimeKeyOptions>(builder.Configuration.GetSection("OneTimeKeyOptions"));
-// µù¥U°O¾ĞÅé§Ö¨ú¤w¦b¤W¤è§¹¦¨¡AMemoryOneTimeKeyStore ªº IMemoryCache ¬Û¨Ì©Ê¥i³Q¸ÑªR
+// è¨»å†Šè¨˜æ†¶é«”å¿«å–å·²åœ¨ä¸Šæ–¹å®Œæˆï¼ŒMemoryOneTimeKeyStore çš„ IMemoryCache ç›¸ä¾æ€§å¯è¢«è§£æ
 builder.Services.AddSingleton<IOneTimeKeyStore, MemoryOneTimeKeyStore>();
 builder.Services.AddSingleton<RsaCryptoService>();
 builder.Services.AddSingleton<AesGcmCryptoService>();
@@ -117,8 +118,8 @@ builder.Services.AddScoped<IHmacTokenService, HmacTokenService>();
 
 var app = builder.Build();
 
-// ±Ò¥Î Forwarded Headers
-// ¥²¶·©ñ¦b¨ä¥L Middleware¡]¦p Authentication, StaticFiles¡^¤§«e
+// å•Ÿç”¨ Forwarded Headers
+// å¿…é ˆæ”¾åœ¨å…¶ä»– Middlewareï¼ˆå¦‚ Authentication, StaticFilesï¼‰ä¹‹å‰
 app.UseForwardedHeaders();
 
 app.UseSerilogRequestLogging(opts =>
@@ -130,7 +131,7 @@ app.UseSerilogRequestLogging(opts =>
 
     opts.EnrichDiagnosticContext = (diag, ctx) =>
     {
-        // Àu¥ı¨Ï¥Î X-Request-Id header¡A­Y¤£¦s¦b©Î¬°ªÅ«h¨Ï¥Î TraceIdentifier
+        // å„ªå…ˆä½¿ç”¨ X-Request-Id headerï¼Œè‹¥ä¸å­˜åœ¨æˆ–ç‚ºç©ºå‰‡ä½¿ç”¨ TraceIdentifier
         string requestId = RequestHelper.GetRequestId(ctx);
         diag.Set("RequestId", requestId);
 
@@ -152,16 +153,16 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-// Web API Log Middleware: ¤@©w­n¦b¥ş°ì¨Ò¥~³B²z¤§«e
+// Web API Log Middleware: ä¸€å®šè¦åœ¨å…¨åŸŸä¾‹å¤–è™•ç†ä¹‹å‰
 app.UseMiddleware<WebApiRequestLogMiddleware>();
 
-// ¥ş°ì¨Ò¥~³B²z
+// å…¨åŸŸä¾‹å¤–è™•ç†
 app.UseExceptionHandler();
 
-// ¨Ï¥Î¤wµù¥Uªº IMiddleware ¹ê¨Ò
+// ä½¿ç”¨å·²è¨»å†Šçš„ IMiddleware å¯¦ä¾‹
 app.UseMiddleware<IpAllowlistMiddleware>();
 
-// ­­¬y
+// é™æµ
 app.UseRateLimiter();
 
 app.MapControllers();
