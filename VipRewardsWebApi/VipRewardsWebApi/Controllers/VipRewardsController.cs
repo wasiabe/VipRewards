@@ -78,7 +78,7 @@ namespace VipRewardsWebApi.Controllers
                 VipLevel = "1",
                 ValidFrom = "2026/01/18",
                 ValidTill = "2027/01/17",
-                RewardBalance = 1688,
+                RewardPoints = 1688,
             };
             GetVipInfoResponse getVipInfoResponse = new GetVipInfoResponse();
             getVipInfoResponse.VipInfos = new List<VipInfo>();
