@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 using Serilog.Events;
 using System.Diagnostics;
 using System.Threading.RateLimiting;
+using Cardif.PWS.XOGatewayBOHelper.Services;
 using VipRewardsWebApi.Options;
 using VipRewardsWebApi.Services;
 
@@ -101,6 +102,13 @@ builder.Services.Configure<WebApiRequestLogOptions>(
 builder.Services.AddScoped<IWebApiRequestLogRepository, WebApiRequestLogRepository>();
 builder.Services.AddScoped<WebApiRequestLogMiddleware>();
 builder.Services.AddScoped<IXoInParamRepository, XoInParamRepository>();
+builder.Services.AddScoped<XoInParamRepository>();
+builder.Services.AddScoped<VipRewardService>();
+builder.Services.AddHttpClient<XOGatewayAccessService>((sp, client) =>
+{
+    var config = sp.GetRequiredService<IConfiguration>();
+    client.BaseAddress = new Uri(config["XOGatewayBO:BaseUrl"]);
+});
 
 // 批次寫入LOG
 builder.Services.AddSingleton(new WebApiRequestLogQueue(capacity: 5000));

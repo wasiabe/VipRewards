@@ -27,6 +27,7 @@ using Cardif.PWS.XOGatewayBOHelper.Exceptions;
 using Cardif.PWS.XOGatewayBOHelper.Interfaces;
 using System;
 using System.Configuration;
+using System.Net.Http;
 using System.Xml;
 
 namespace Cardif.PWS.XOGatewayBOHelper.Services
@@ -36,6 +37,17 @@ namespace Cardif.PWS.XOGatewayBOHelper.Services
     /// </summary>
     public class XOGatewayAccessService : IXOGatewayAccessService
     {
+        private readonly HttpClient _httpClient;
+
+        public XOGatewayAccessService()
+        {
+        }
+
+        public XOGatewayAccessService(HttpClient httpClient)
+        {
+            _httpClient = httpClient;
+        }
+
         #region 私有方法
 
         /// <summary>
@@ -54,7 +66,10 @@ namespace Cardif.PWS.XOGatewayBOHelper.Services
 
             string ConfigKeyName = string.Format("{0}XOGatewayBOWebService", (xoEntity.Company == "") ? "" : xoEntity.Company + "_");
 
-            if (ConfigurationManager.AppSettings[ConfigKeyName] == null)
+            bool hasConfigUrl = ConfigurationManager.AppSettings[ConfigKeyName] != null;
+            bool hasBaseAddress = _httpClient?.BaseAddress != null;
+
+            if (!hasConfigUrl && !hasBaseAddress)
             {
                 WebConfigNonReferenceException ex = new WebConfigNonReferenceException(
                                                 "Web.config檔中沒有指定參數" + ConfigKeyName + "。");
@@ -104,7 +119,9 @@ namespace Cardif.PWS.XOGatewayBOHelper.Services
         private XOGatewayBO.XOGatewayBOService GetXOGatewayBOService(string parCompany)
         {
             // 建立XOGatewayBO層的服務實體。
-            XOGatewayBO.XOGatewayBOService xoService = new XOGatewayBO.XOGatewayBOService();
+            XOGatewayBO.XOGatewayBOService xoService = _httpClient == null
+                ? new XOGatewayBO.XOGatewayBOService()
+                : new XOGatewayBO.XOGatewayBOService(_httpClient);
 
             XOGatewayBO.Credentials _Credentials = new XOGatewayBO.Credentials();
             _Credentials.Token = ConfigurationManager.AppSettings["XOGatewayToken"].ToString();
@@ -115,19 +132,23 @@ namespace Cardif.PWS.XOGatewayBOHelper.Services
             // 2012/02/13 - Chris - 根據公司別決定參數
             if (parCompany == "")
             {
-                xoService.Url = ConfigurationManager.AppSettings["XOGatewayBOWebService"].ToString();
+                xoService.Url = ConfigurationManager.AppSettings["XOGatewayBOWebService"]?.ToString()
+                    ?? _httpClient?.BaseAddress?.ToString();
             }
             else if (parCompany == "VIE")
             {
-                xoService.Url = ConfigurationManager.AppSettings["VIE_XOGatewayBOWebService"].ToString();
+                xoService.Url = ConfigurationManager.AppSettings["VIE_XOGatewayBOWebService"]?.ToString()
+                    ?? _httpClient?.BaseAddress?.ToString();
             }
             else if (parCompany == "RD")
             {
-                xoService.Url = ConfigurationManager.AppSettings["RD_XOGatewayBOWebService"].ToString();
+                xoService.Url = ConfigurationManager.AppSettings["RD_XOGatewayBOWebService"]?.ToString()
+                    ?? _httpClient?.BaseAddress?.ToString();
             }
             else if (parCompany == "TCBLIFE")
             {
-                xoService.Url = ConfigurationManager.AppSettings["TCBLIFE_XOGatewayBOWebService"].ToString();
+                xoService.Url = ConfigurationManager.AppSettings["TCBLIFE_XOGatewayBOWebService"]?.ToString()
+                    ?? _httpClient?.BaseAddress?.ToString();
             }
 
             return xoService;
