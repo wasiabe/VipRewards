@@ -21,6 +21,7 @@ namespace VipRewardsWebApi.Controllers
         private readonly OneTimeKeyOptions _opt;
         private readonly IHmacTokenService _hmacService;
         private readonly IXoInParamRepository _xoInParamRepository;
+        private readonly VipRewardService _vipRewardService;
         public VipRewardsController(
             ILogger<DemoController> logger,
             IOneTimeKeyStore keyStore,
@@ -28,7 +29,8 @@ namespace VipRewardsWebApi.Controllers
             AesGcmCryptoService aes,
             IOptions<OneTimeKeyOptions> opt,
             IHmacTokenService hmacService,
-            IXoInParamRepository xoInParamRepository)
+            IXoInParamRepository xoInParamRepository,
+            VipRewardService vipRewardService)
         {
             _logger = logger;
             _keyStore = keyStore;
@@ -37,6 +39,7 @@ namespace VipRewardsWebApi.Controllers
             _opt = opt.Value;
             _hmacService = hmacService;
             _xoInParamRepository = xoInParamRepository;
+            _vipRewardService = vipRewardService;
         }
 
         /// <summary>
@@ -154,6 +157,11 @@ namespace VipRewardsWebApi.Controllers
                 {
                     return BadRequest(Error.Validation("Decrypted payload is not valid JSON."));
                 }
+
+                _ = await _vipRewardService.GetXODataAsync(
+                    "EBIZ001",
+                    new { id, birthDate },
+                    HttpContext.RequestAborted);
 
                 // 4) 將id作HMAC256 Hash
                 var tk = _hmacService.IssueToken(id);
