@@ -182,7 +182,7 @@ namespace Cardif.PWS.XOGatewayBOHelper.XOGatewayBO
                 };
 
                 using XmlReader reader = resultSetElement.CreateReader();
-                dataSet.ReadXml(reader, XmlReadMode.ReadSchema);
+                dataSet.ReadXml(reader, XmlReadMode.Auto);
                 result.ResultSet = dataSet;
             }
             else

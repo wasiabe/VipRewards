@@ -29,6 +29,7 @@ using System;
 using System.Configuration;
 using System.Net.Http;
 using System.Xml;
+using Microsoft.Extensions.Configuration;
 
 namespace Cardif.PWS.XOGatewayBOHelper.Services
 {
@@ -38,14 +39,16 @@ namespace Cardif.PWS.XOGatewayBOHelper.Services
     public class XOGatewayAccessService : IXOGatewayAccessService
     {
         private readonly HttpClient _httpClient;
+        private readonly IConfiguration _configuration;
 
         public XOGatewayAccessService()
         {
         }
 
-        public XOGatewayAccessService(HttpClient httpClient)
+        public XOGatewayAccessService(HttpClient httpClient, IConfiguration configuration)
         {
             _httpClient = httpClient;
+            _configuration = configuration;
         }
 
         #region 私有方法
@@ -64,9 +67,10 @@ namespace Cardif.PWS.XOGatewayBOHelper.Services
                 throw ex;
             }
 
+            xoEntity.Company = _configuration.GetSection($"XOGatewayBO:Company").Value ?? string.Empty;
             string ConfigKeyName = string.Format("{0}XOGatewayBOWebService", (xoEntity.Company == "") ? "" : xoEntity.Company + "_");
 
-            bool hasConfigUrl = ConfigurationManager.AppSettings[ConfigKeyName] != null;
+            bool hasConfigUrl = _configuration.GetSection($"XOGatewayBO:BaseUrl").Value != null;
             bool hasBaseAddress = _httpClient?.BaseAddress != null;
 
             if (!hasConfigUrl && !hasBaseAddress)
@@ -79,8 +83,8 @@ namespace Cardif.PWS.XOGatewayBOHelper.Services
 
 
 
-            //2012/04/23 Chris 新增參數，加強Web Service的安全性
-            if (ConfigurationManager.AppSettings["XOGatewayToken"] == null)
+            //2012/04/23 Chris 新增參數，加強Web Service的安全性            
+            if (_configuration.GetSection($"XOGatewayBO:XOGatewayToken").Value == null)
             {
                 WebConfigNonReferenceException ex = new WebConfigNonReferenceException(
                                                 "Web.config檔中沒有指定參數XOGatewayToken。");
@@ -124,32 +128,12 @@ namespace Cardif.PWS.XOGatewayBOHelper.Services
                 : new XOGatewayBO.XOGatewayBOService(_httpClient);
 
             XOGatewayBO.Credentials _Credentials = new XOGatewayBO.Credentials();
-            _Credentials.Token = ConfigurationManager.AppSettings["XOGatewayToken"].ToString();
+            _Credentials.Token = _configuration.GetSection("XOGatewayBO:XOGatewayToken").Value.ToString() ?? string.Empty;
 
             xoService.CredentialsValue = _Credentials;
 
-            // 設定XOGatewayBO的Web Service網址。
-            // 2012/02/13 - Chris - 根據公司別決定參數
-            if (parCompany == "")
-            {
-                xoService.Url = ConfigurationManager.AppSettings["XOGatewayBOWebService"]?.ToString()
-                    ?? _httpClient?.BaseAddress?.ToString();
-            }
-            else if (parCompany == "VIE")
-            {
-                xoService.Url = ConfigurationManager.AppSettings["VIE_XOGatewayBOWebService"]?.ToString()
-                    ?? _httpClient?.BaseAddress?.ToString();
-            }
-            else if (parCompany == "RD")
-            {
-                xoService.Url = ConfigurationManager.AppSettings["RD_XOGatewayBOWebService"]?.ToString()
-                    ?? _httpClient?.BaseAddress?.ToString();
-            }
-            else if (parCompany == "TCBLIFE")
-            {
-                xoService.Url = ConfigurationManager.AppSettings["TCBLIFE_XOGatewayBOWebService"]?.ToString()
-                    ?? _httpClient?.BaseAddress?.ToString();
-            }
+            xoService.Url = _configuration.GetSection("XOGatewayBO:Url").Value.ToString() ?? string.Empty
+                ?? _httpClient?.BaseAddress?.ToString();
 
             return xoService;
         }

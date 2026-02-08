@@ -94,7 +94,7 @@ builder.Services.AddTransient<IpAllowlistMiddleware>();
 
 // 注入資料庫服務
 builder.Services.AddDbContext<AppDbContext>(opt =>
-    opt.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    opt.UseSqlServer(builder.Configuration.GetConnectionString("TcbVipDb")));
 
 // 注入Web API Log服務
 builder.Services.Configure<WebApiRequestLogOptions>(

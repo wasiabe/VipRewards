@@ -158,9 +158,11 @@ namespace VipRewardsWebApi.Controllers
                     return BadRequest(Error.Validation("Decrypted payload is not valid JSON."));
                 }
 
-                _ = await _vipRewardService.GetXODataAsync(
+                //呼叫EBIZ001取得保戶資訊進行核對
+                XoEbiz001Request xoEbiz001Request = new XoEbiz001Request { idNo = id };
+                var xoResult = await _vipRewardService.GetXODataAsync(
                     "EBIZ001",
-                    new { id, birthDate },
+                    xoEbiz001Request,
                     HttpContext.RequestAborted);
 
                 // 4) 將id作HMAC256 Hash

@@ -314,7 +314,7 @@ namespace Cardif.PWS.XOGatewayBOHelper.Services
             for (int i = 0; i < uiInput.Length; i++)
             {
 
-                if (findFieldName.Equals(uiInput[i]))
+                if (findFieldName.ToLower().Equals(uiInput[i].ToLower()))
                 {
                     index = i;
                     break;
